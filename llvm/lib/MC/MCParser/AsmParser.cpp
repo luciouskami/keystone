@@ -712,12 +712,13 @@ size_t AsmParser::Run(bool NoInitialTextSection, uint64_t Address, bool NoFinali
     //printf(">> 222 error = %u\n", Info.KsError);
     if (!KsError)
         KsError = Info.KsError;
+        return 0;
 
     // We had an error, validate that one was emitted and recover by skipping to
     // the next line.
     // assert(HadError && "Parse statement returned an error, but none emitted!");
 
-    eatToEndOfStatement();
+    //eatToEndOfStatement();
   }
 
   if (TheCondState.TheCond != StartingCondState.TheCond ||
@@ -1680,8 +1681,13 @@ bool AsmParser::parseStatement(ParseStatementInfo &Info,
 
     // First query the target-specific parser. It will return 'true' if it
     // isn't interested in this directive.
-    if (!getTargetParser().ParseDirective(ID))
-      return false;
+      uint64_t BytesInFragment = getStreamer().getCurrentFragmentSize();
+      if (!getTargetParser().ParseDirective(ID)){
+        // increment the address for the next statement if the directive
+        // has emitted any value to the streamer.
+        Address += getStreamer().getCurrentFragmentSize() - BytesInFragment;
+        return false;
+        }
 
     // Next, check the extension directive map to see if any extension has
     // registered itself to parse this directive.
